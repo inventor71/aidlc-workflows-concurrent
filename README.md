@@ -77,7 +77,7 @@ is a full process built on it.
 ## Origin
 
 Customized from [awslabs/aidlc-workflows](https://github.com/awslabs/aidlc-workflows)
-(MIT-0) by integrating the [agent-tracks](https://github.com/inventor71/agent-tracks)
+**v0.1.8** (MIT-0) by integrating the [agent-tracks](https://github.com/inventor71/agent-tracks)
 concurrent-track discipline into every phase of the workflow. The customization was
 extracted from a production project that ran 60+ concurrent tracks.
 
