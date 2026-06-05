@@ -296,6 +296,32 @@ Create `.aidlc-docs/construction/build-and-test/build-and-test-summary.md`:
 
 ---
 
+## Step 7.5: Generate Post-Merge Guide (only if user-facing / real-usage impact)
+
+Worktree verification proves the change is *internally* green; it does **not** tell the user
+what to expect **in production** or how to confirm it **in real use**. Close that gap for any
+track whose change is user-facing or has real-usage impact.
+
+**If the change is purely internal** (refactor with no behavior change, test-only, doc-only) →
+**skip this step.**
+
+Otherwise create `.aidlc-docs/tracks/<id>/post-merge-guide.md` covering:
+
+- **Expected prod behavior** — what the user should observe in production after merge.
+- **Preconditions** — what must happen for the change to take effect (e.g. daemon/service
+  restart, new env vars, config changes, migrations).
+- **Real-use verification checklist** — concrete smoke command(s), *where to look*, and what
+  *normal output* looks like (so the user can tell success from failure without reading code).
+- **Tuning knobs** — any parameters/flags worth adjusting and their effect.
+- **Rollback** — how to revert the user-visible effect if it misbehaves.
+- **Known limits / out of scope** — what this change deliberately does NOT do.
+
+When feasible, run **one live smoke against real data** before declaring done — fakes and unit
+tests cannot catch external-integration breakage (real services, real I/O, real config). Record
+the result in the guide.
+
+---
+
 ## Step 8: Update State Tracking + enqueue for merge
 
 > **Partition model (see `common/concurrent-tracks.md`)**: progress lives in the track's own
@@ -313,6 +339,14 @@ Update `.aidlc-docs/tracks/<id>/state.md`:
   - If Build & Test did **not** pass, keep `**Status**: active` and do not enqueue; fix and rerun.
   - This only *enqueues*; `/ai-dlc-merge` still has its own approval gate before any merge, so
     setting `merge-awaiting` here cannot cause a premature merge.
+
+> **Revert `merge-awaiting` when more work lands.** Once a track is `merge-awaiting`, any further
+> change to it (additional implementation, code-review fixes, critic fixes, a re-review) means it
+> is no longer verified-green-as-of-now. **Before editing**, set the track's `state.md` Status
+> back to `active`; re-set `merge-awaiting` **only after** Build & Test is re-run and green again.
+> A commit alone does NOT take the track out of the merge queue — **the Status flag is the sole
+> source of truth**, and `/ai-dlc-merge` keys off it. Skipping this risks the merge orchestrator
+> picking up a half-finished track.
 
 ---
 
@@ -369,6 +403,7 @@ Present completion message in this structure:
 - integration-test-instructions.md
 - performance-test-instructions.md
 - build-and-test-summary.md
+- post-merge-guide.md (only if the change is user-facing — see Step 7.5)
 
 ---
 ```

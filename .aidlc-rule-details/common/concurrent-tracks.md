@@ -38,6 +38,15 @@ resolve with `git pull --rebase`.
 .aidlc-docs/
 ├── registry.md               # Track Registry ONLY (thin index). Rarely edited.
 ├── log.md                     # GLOBAL timeline. Append-only, written ONLY at merge-time.
+├── codekb/                    # Shared codebase knowledge. Single writer: CI (bootstrap exception: first track).
+│   ├── summary.md
+│   ├── architecture.md
+│   ├── integration-map.md
+│   ├── domain-entities.md
+│   ├── business-rules.md
+│   ├── nfr-design.md
+│   ├── infrastructure-design.md
+│   └── codekb-state.md
 └── tracks/
     ├── _TEMPLATE/             # copy this to start a track
     │   ├── state.md
@@ -83,6 +92,12 @@ A single table is the authority for which tracks exist and where they live:
   **its own** `tracks/<id>/state.md` when Build & Test passes (the standard hand-off — see
   `construction/build-and-test.md` Step 8). `merge-awaiting` enqueues the track for `/ai-dlc-merge`;
   the registry row stays `active` until that command flips it to `merged` at actual merge time.
+- **`merge-awaiting` is revertible — the Status flag, not the commit log, is the queue.** If more
+  work lands on a `merge-awaiting` track (extra implementation, code-review/critic fixes, a
+  re-review), flip its `tracks/<id>/state.md` Status back to `active` **before editing**, and
+  restore `merge-awaiting` **only after** Build & Test is re-run green. A commit by itself never
+  removes a track from the queue; `/ai-dlc-merge` selects purely on this flag, so leaving it
+  `merge-awaiting` while work is in flight risks merging a half-finished track.
 - A registry row is written at track **creation** and flipped at **merge/close**. These are the
   only two cross-track edits; serialize them with `git pull --rebase` before committing.
 
@@ -156,6 +171,7 @@ project-specific bootstrap steps.
 
 - The **Track Registry** (root `registry.md`).
 - The **global timeline** (root `log.md`) — merge-time appends only.
+- The **CodeKB** (`.aidlc-docs/codekb/`) — shared codebase knowledge. Single writer is CI (refreshes on every push to `main`). First-track bootstrap during inception RE if CodeKB absent. All tracks read-only.
 - The rule files under `.aidlc-rule-details/` and `CLAUDE.md` — changing process itself is a track too.
 
 ## Quick checklist for any agent starting work
@@ -163,4 +179,5 @@ project-specific bootstrap steps.
 - [ ] Am I in a worktree for my track? If coding and on `main` → stop, create worktree.
 - [ ] Does my track have `.aidlc-docs/tracks/<id>/{state.md,audit.md}`? If not → create from template + register.
 - [ ] Am I about to edit root `registry.md`/`log.md` mid-flight? → Don't. Use my track files.
+- [ ] Am I about to edit `codekb/` from a track? → Don't. Only CI writes it.
 - [ ] Am I writing a phase doc to top-level `inception/`/`construction/`? → Don't. Put it under `tracks/<id>/`.
