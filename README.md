@@ -37,14 +37,30 @@ Copy into your project alongside agent-tracks:
 
 ```
 your-repo/
-├── .aidlc-rule-details/   ← copy this repo's .aidlc-rule-details/
-├── .aidlc-docs/            ← agent-tracks Track Registry + per-track docs
+├── .aidlc-rule-details/   ← this repo (AI-DLC rule files, track-aware)
 ├── .claude/
-│   ├── commands/           ← agent-tracks slash commands
+│   ├── commands/
+│   │   ├── ai-dlc-*        ← this repo (AI-DLC process commands)
+│   │   └── track-*         ← agent-tracks (track mechanism commands)
 │   ├── agents/             ← agent-tracks critic subagent
-│   └── hooks/              ← agent-tracks guard hook
-└── rules/
-    └── concurrent-tracks.md
+│   └── hooks/              ← this repo (worktree gate for aidlc-docs paths)
+├── .tracks/                ← agent-tracks (track template + registry for bare track-* commands)
+└── aidlc-docs/             ← created at runtime by /ai-dlc-request (Track Registry + per-track state)
+```
+
+Activate the worktree gate hook in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "command": "python .claude/hooks/guard-main-edits.py"
+      }
+    ]
+  }
+}
 ```
 
 Then point your project's `CLAUDE.md` at both:
@@ -57,6 +73,15 @@ All per-track state lives under `.aidlc-docs/tracks/<id>/`.
 ## Parallel work
 This repo uses agent-tracks for concurrent work. Never generate code outside a
 track worktree.
+
+## Slash commands
+- `/ai-dlc-request` — start new AI-DLC work (the front door)
+- `/ai-dlc-merge` — sequential merge orchestrator
+- `/ai-dlc-status` — read-only progress dashboard
+- `/ai-dlc-resume` — continue from breakpoint
+- `/ai-dlc-refactor` — behavior-preserving redesign
+- `/ai-dlc-deprecate` — safe feature removal
+- `/track-*` — track lifecycle (from agent-tracks)
 ```
 
 ## Relationship to agent-tracks
@@ -68,7 +93,9 @@ track worktree.
 | Track lifecycle | ✅ create → work → merge-awaiting → merged | ✅ same, integrated into AI-DLC phases |
 | Requirements / Design | — (bring your own) | ✅ full AI-DLC: requirements → design → code → test |
 | Per-track state | `.tracks/<id>/` | `.aidlc-docs/tracks/<id>/` |
-| Guard hook | ✅ `guard-main-edits.py` | — (use agent-tracks') |
+| Slash commands | `track-*` (mechanism) | `ai-dlc-*` (process) |
+| Guard hook | ✅ `.tracks/`-based variant | ✅ `aidlc-docs/`-based variant |
+| Critic subagent | ✅ `critic` agent + command | — (use agent-tracks') |
 
 The two repos share the same philosophy and conventions (`t1`/`t2` ids, `merge-awaiting`
 hand-off, single-writer partition). agent-tracks is the mechanism; aidlc-workflows-concurrent
