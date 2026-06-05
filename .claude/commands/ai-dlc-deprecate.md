@@ -1,52 +1,57 @@
 ---
-description: 기능/API 폐기 전용 트랙 — 영향 분석·합의·마이그레이션·호출부 정리까지 안전하게 cut
-argument-hint: "[폐기 대상 기능·API·플래그·모듈 — 비우면 무엇을 폐기할지 질문]"
+description: Dedicated track for deprecating a feature/API — safely cut it through impact analysis, agreement, migration, and call-site cleanup
+argument-hint: "[feature/API/flag/module to deprecate — if empty, asks what to deprecate]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git worktree list:*), Bash(git status:*), Bash(git diff:*), Bash(pytest:*), Bash(npm:*), Bash(make:*), Bash(cargo:*), Bash(go test:*), Bash(bun test:*)
 ---
 
-# /ai-dlc-deprecate — 기능 폐기 트랙
+# /ai-dlc-deprecate — Feature Deprecation Track
 
-기존 기능/API/옵션을 **의도적으로 제거(cut)**하기 위한 전용 커맨드.
-`/ai-dlc-refactor`의 **T3(의도 변경/기능 cut)**를 독립 절차로 떼어낸 것 —
-"단순화를 위해 일부 기능을 삭제/수정"하는 경우가 여기 해당한다.
+A dedicated command for **intentionally removing (cutting)** an existing feature/API/option.
+It splits out **T3 (intent change / feature cut)** from `/ai-dlc-refactor` as a standalone
+procedure — the "delete/modify some features for simplification" case belongs here.
 
-**전제**: cut은 본질적으로 동작 변경이므로 **항상 사용자 승인이 필요**하다.
-이 커맨드는 승인 전까지 **분석·제안만** 하고 코드를 제거하지 않는다.
+**Premise**: a cut is inherently a behavior change, so it **always requires user approval**.
+Until approval, this command only **analyzes and proposes** — it does not remove any code.
 
-폐기 대상: $ARGUMENTS
-(비어 있으면 "무엇을, 왜 폐기하려는지" 먼저 묻는다.)
+Deprecation target: $ARGUMENTS
+(If empty, first ask "what to deprecate, and why".)
 
-## 진행 절차
+## Procedure
 
-각 단계 산출물은 `aidlc-docs/inception/deprecate/<name>/`에 두고, 단계마다 승인 게이트를 둔다.
+Place each stage's output under `aidlc-docs/inception/deprecate/<name>/`, with an approval gate
+at each stage.
 
-### 단계 1 — 영향 분석 (Impact Analysis)
-산출물: `1-impact.md`
-- **무엇을 폐기하나**: 정확한 심볼/엔드포인트/플래그/파일.
-- **누가 쓰나**: 호출부 전수조사(grep으로 내부 사용처), 외부 계약(공개 API·CLI·스키마·
-  설정 키·저장 포맷)인지 여부, 의존하는 테스트.
-- **왜 폐기하나**: backward-compat 유지가 키우는 **구체적 복잡도 비용**.
-- **무엇을 잃나**: 이 기능에만 있던 동작/사용 시나리오.
+### Stage 1 — Impact Analysis
+Output: `1-impact.md`
+- **What is being deprecated**: exact symbol/endpoint/flag/file.
+- **Who uses it**: full sweep of call sites (grep for internal usage), whether it is an external
+  contract (public API / CLI / schema / config key / storage format), and dependent tests.
+- **Why deprecate**: the **concrete complexity cost** that maintaining backward-compat incurs.
+- **What is lost**: behaviors / usage scenarios that existed only in this feature.
 
-### 단계 2 — 폐기 결정 게이트 (🛑 승인 필요)
-- 단계 1을 표로 정리해 사용자에게 제시하고 **결정을 받는다**:
-  - **즉시 제거** / **유예 후 제거(deprecation 경고 단계 경유)** / **대체재 제공 후 제거** /
-    **유지(cut 취소)**.
-- 외부 계약이면 기본은 보수적으로 "유예/대체재" 쪽을 권하되, 사용자가 "즉시 cut"을
-  택하면 따른다. 결정을 산출물과 `aidlc-docs/audit.md`에 기록한다.
+### Stage 2 — Deprecation Decision Gate (🛑 approval required)
+- Summarize Stage 1 as a table, present it to the user, and **get a decision**:
+  - **Remove now** / **Remove after grace period (via a deprecation-warning phase)** /
+    **Remove after providing a replacement** / **Keep (cancel the cut)**.
+- If it is an external contract, default conservatively to recommending "grace period /
+  replacement", but follow the user if they choose "cut now". Record the decision in the output
+  and in `aidlc-docs/audit.md`.
 
-### 단계 3 — 마이그레이션 계획 (Migration Plan)
-산출물: `2-migration.md`
-- 승인된 방식에 맞는 단계적 제거 순서(작은 단위, 매 단계 테스트 green 유지).
-- 대체재가 있으면 호출부 전환 매핑, 유예면 경고 메시지/기한, 문서·CHANGELOG 갱신 항목.
-- 제거로 죽는 테스트의 처리(삭제할지 대체재 테스트로 교체할지) 명시.
+### Stage 3 — Migration Plan
+Output: `2-migration.md`
+- A staged removal order matching the approved approach (small units, keeping tests green at
+  every step).
+- If there is a replacement, the call-site migration mapping; if a grace period, the warning
+  message / deadline; the docs / CHANGELOG entries to update.
+- Specify how tests killed by the removal are handled (delete, or replace with replacement tests).
 
-### 단계 4 — 구현 (AI-DLC Construction)
-- 단계 1~3 승인 후, AI-DLC code-generation 흐름으로 진행.
-- **승인된 범위만** 제거/전환한다. 합의되지 않은 추가 cut은 손대지 않는다.
-- 호출부·테스트·문서를 같은 변경에서 함께 정리해 깨진 참조가 남지 않게 한다.
+### Stage 4 — Implementation (AI-DLC Construction)
+- After Stages 1–3 are approved, proceed via the AI-DLC code-generation flow.
+- Remove/migrate **only the approved scope**. Do not touch any additional cut that was not agreed.
+- Clean up call sites, tests, and docs in the same change so no broken references remain.
 
-## 운영 규칙
-- 사용자 입력/승인은 `aidlc-docs/audit.md`에 **append**(덮어쓰기 금지). 문서는 한국어 기본.
-- 애플리케이션 코드는 워크스페이스 루트, 문서는 `aidlc-docs/`에만.
-- 폐기 범위가 커서 별도 재설계가 얽히면 `/ai-dlc-refactor`와 연계(이 트랙은 cut에 집중).
+## Operating rules
+- **Append** user input/approvals to `aidlc-docs/audit.md` (never overwrite). Docs default to English.
+- Application code goes in the workspace root; docs only under `aidlc-docs/`.
+- If the deprecation scope is large and entangled with a separate redesign, coordinate with
+  `/ai-dlc-refactor` (this track focuses on the cut).

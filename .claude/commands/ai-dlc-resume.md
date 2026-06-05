@@ -1,46 +1,52 @@
 ---
-description: AI-DLC 작업을 aidlc-state.md 기준 중단점부터 재개
-argument-hint: "[선택: 특정 unit/stage 이름 — 비우면 state가 가리키는 다음 단계]"
+description: Resume AI-DLC work from its stopping point, based on aidlc-state.md
+argument-hint: "[optional: a specific unit/stage name — if empty, the next step the state points to]"
 allowed-tools: Read, Glob, Grep, Bash(git worktree list:*), Bash(git worktree add:*), Bash(git status:*), Bash(git rev-parse:*)
 ---
 
-# /ai-dlc-resume — 중단점부터 재개
+# /ai-dlc-resume — Resume from the stopping point
 
-이전 세션에서 진행하던 AI-DLC 작업을 **상태 파일 기준으로 이어서** 진행한다.
+Continues the AI-DLC work in progress from a previous session, **based on the state file**.
 
-재개 대상: $ARGUMENTS
-(비어 있으면 — 트랙 인자가 있으면 그 트랙, 없으면 Registry의 유일한 `active` 트랙. active가
-여러 개면 어느 트랙을 재개할지 먼저 묻는다.)
+Resume target: $ARGUMENTS
+(If empty — if a track argument is given, that track; otherwise the single `active` track in the
+Registry. If multiple are active, first ask which track to resume.)
 
-## 진행 절차
+## Procedure
 
-1. **세션 연속성 규칙 로드.** `.aidlc-rule-details/`에서
-   `common/session-continuity.md`, `common/process-overview.md`, `common/concurrent-tracks.md`를 로드.
+1. **Load session-continuity rules.** From `.aidlc-rule-details/`, load
+   `common/session-continuity.md`, `common/process-overview.md`, `common/concurrent-tracks.md`.
 
-2. **트랙 선택 + 상태 파악.** 다음을 읽고 현재 위치를 재구성한다:
-   - 루트 `aidlc-docs/aidlc-state.md`의 **Track Registry** — 재개할 트랙(`<id>`)·브랜치·worktree 확인.
-   - **그 트랙의** `aidlc-docs/tracks/<id>/state.md` — 완료/스킵/진행 중 stage, Extension Configuration.
-   - **그 트랙의** `aidlc-docs/tracks/<id>/audit.md`의 **최근 항목** — 마지막 사용자 입력·승인·다음 액션.
-     (루트 `audit.md`는 머지 요약용이므로 진행 맥락은 트랙 audit에서 본다.)
-   - 진행 중 stage의 plan 파일 체크박스(`aidlc-docs/construction/<unit>/...`,
-     `aidlc-docs/inception/.../plans/...`) — 어느 step까지 [x]인지.
-   - **worktree 확인**: `git worktree list`로 그 트랙 worktree에 있는지. 코딩 단계인데 worktree가
-     없으면 먼저 생성하라고 안내(코드는 worktree 안에서만).
-   - `/ai-dlc-refactor` 작업이면 `aidlc-docs/inception/refactor/<name>/2-tier-ledger.md`의
-     정지 지점(특히 미해결 T3 항목).
+2. **Select the track + assess state.** Read the following and reconstruct the current position:
+   - The **Track Registry** in root `aidlc-docs/aidlc-state.md` — confirm the track (`<id>`) to
+     resume, its branch and worktree.
+   - **That track's** `aidlc-docs/tracks/<id>/state.md` — done/skipped/in-progress stages,
+     Extension Configuration.
+   - The **recent entries** in **that track's** `aidlc-docs/tracks/<id>/audit.md` — last user
+     input / approval / next action. (The root `audit.md` is for merge summaries, so read
+     progress context from the track audit.)
+   - The plan-file checkboxes of the in-progress stage (`aidlc-docs/construction/<unit>/...`,
+     `aidlc-docs/inception/.../plans/...`) — up to which step is `[x]`.
+   - **Worktree check**: via `git worktree list`, whether you are in that track's worktree. If
+     it is a coding stage but there is no worktree, advise creating it first (code only inside a
+     worktree).
+   - If it is `/ai-dlc-refactor` work, the stop points in
+     `aidlc-docs/inception/refactor/<name>/2-tier-ledger.md` (especially unresolved T3 items).
 
-3. **재개 지점 요약 제시.** 사용자에게 2~4줄로:
-   - 지금 어느 phase/stage/unit에 있는지,
-   - 마지막으로 완료한 것과 **바로 다음에 할 일**,
-   - 사용자 입력 대기 중인 게이트(미응답 질문·미승인 단계)가 있으면 명시.
+3. **Present a resume-point summary.** To the user in 2–4 lines:
+   - which phase/stage/unit you are in now,
+   - the last completed item and **what to do next**,
+   - if there is a gate awaiting user input (unanswered question / unapproved stage), state it.
 
-4. **게이트 확인.** 다음 단계가 **승인 대기**거나 **미응답 질문**이면, 자동 진행하지 말고
-   해당 질문/승인을 다시 제시하고 멈춘다. 그 외에는 워크플로대로 이어서 진행한다.
+4. **Check the gate.** If the next stage is **awaiting approval** or has an **unanswered question**,
+   do not auto-proceed — re-present that question/approval and stop. Otherwise continue per the workflow.
 
-5. **기록.** 이 재개 호출과 사용자 응답을 **그 트랙의** `aidlc-docs/tracks/<id>/audit.md`에 append.
+5. **Record.** Append this resume invocation and the user's response to **that track's**
+   `aidlc-docs/tracks/<id>/audit.md`.
 
-## 주의
+## Notes
 
-- 상태가 모순되거나(예: state는 완료인데 plan 체크박스는 미완) 애매하면 **추측하지 말고**
-  무엇을 다음으로 할지 사용자에게 확인한다.
-- Registry에 `active` 트랙이 없으면 재개할 작업이 없는 것 — `/ai-dlc-request`로 새로 시작하라고 안내.
+- If the state is contradictory (e.g. state says done but plan checkboxes are incomplete) or
+  ambiguous, **do not guess** — confirm with the user what to do next.
+- If there is no `active` track in the Registry, there is nothing to resume — advise starting
+  fresh with `/ai-dlc-request`.
